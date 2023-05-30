@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>데이터 조회</title>
+</head>
+<body>
+    <h1>데이터 조회</h1>
+    <form action="/graph" method="POST">
+        <label for="date_range">조회 기간:</label>
+        <select id="date_range" name="date_range">
+            {% for option in options %}
+                <option value="{{ option }}">{{ option }}</option>
+            {% endfor %}
+        </select>
+        <input type="submit" value="그래프 생성">
+    </form>
+</body>
+</html>
