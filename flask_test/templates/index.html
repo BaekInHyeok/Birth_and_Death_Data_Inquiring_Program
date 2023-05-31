@@ -1,18 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>데이터 조회</title>
+    <meta charset="UTF-8">
+    <title>구간 별 통계 조회</title>
 </head>
 <body>
-    <h1>데이터 조회</h1>
+    <h1>구간 별 통계 조회</h1>
     <form action="/graph" method="POST">
-        <label for="date_range">조회 기간:</label>
-        <select id="date_range" name="date_range">
+        <label for="data_type">데이터 유형:</label><br>
+        <input type="radio" id="birth" name="data_type" value="birth" checked>
+        <label for="birth">출생 데이터</label>
+        <input type="radio" id="death" name="data_type" value="death">
+        <label for="death">사망 데이터</label><br><br>
+        <label for="start_date">시작일:</label>
+        <select name="start_date" id="start_date">
             {% for option in options %}
-                <option value="{{ option }}">{{ option }}</option>
+            <option value="{{ option }}">{{ option }}</option>
             {% endfor %}
         </select>
-        <input type="submit" value="그래프 생성">
+        <label for="end_date">종료일:</label>
+        <select name="end_date" id="end_date">
+            {% for option in options %}
+            <option value="{{ option }}">{{ option }}</option>
+            {% endfor %}
+        </select><br><br>
+        <input type="submit" value="조회">
     </form>
 </body>
 </html>

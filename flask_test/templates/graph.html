@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>그래프 결과</title>
+    <title>그래프 페이지</title>
 </head>
 <body>
-    <h1>남녀 출생 비율</h1>
-    {{ gender_graph|safe }}
-
-    <h1>시도 별 건수</h1>
-    {{ district_graph|safe }}
+    <h1>그래프 페이지</h1>
+    <div id="gender_graph">
+        {{ gender_graph|safe }}
+    </div>
+    <br>
+    <div id="district_graph">
+        {{ district_graph|safe }}
+    </div>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </body>
 </html>
