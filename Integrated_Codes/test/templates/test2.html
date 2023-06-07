@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>Region Search Results</h1>
+
+    <table>
+        <tr>
+            <th>건수</th>
+            <th>년도</th>
+            <th>성별</th>
+        </tr>
+        {% for result in results %}
+        <tr>
+            <td>{{ result['건수'] }}</td>
+            <td>{{ result['년도'] }}</td>
+            <td>{{ result['성별'] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

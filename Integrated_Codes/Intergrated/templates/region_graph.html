@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Test</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .sidenav {
+            height: 100%;
+            width: 200px;
+            position: fixed;
+            z-index: 1;
+            top: 0;
+            left: 0;
+            background-color: #111;
+            overflow-x: hidden;
+            padding-top: 20px;
+          }
+          
+          .sidenav a {
+            padding: 6px 8px 6px 16px;
+            text-decoration: none;
+            font-size: 25px;
+            color: #818181;
+            display: block;
+          }
+          
+          .sidenav a:hover {
+            color: #f1f1f1;
+          }
+          
+          .main {
+            margin-left: 200px;
+          }
+          
+          h1 {
+            font-size: 50px;
+          }
+          
+          h2 {
+            font-size: 25px;
+          }
+          
+          h3 {
+            font-size: 15px;
+          }
+          
+          h5 {
+            border-bottom: 1px solid black;
+          }
+    </style>
+  </head>
+  <body>
+    <div id="plot">{{ graph|safe }}</div>
+    <div id="plot2">{{ pie|safe }}</div>
+    <div>
+      <table>
+        <thead>
+          <tr>
+            <th>년월</th>
+            <th>지역</th>
+            <th>건수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for data in results %}
+          <tr>
+            <td>{{ data['date'] }}</td>
+            <td>{{ data['region'] }}</td>
+            <td>{{ data['total'] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </body>
+</html>
