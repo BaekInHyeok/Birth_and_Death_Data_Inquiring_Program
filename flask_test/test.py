@@ -1,14 +1,24 @@
 from flask import Flask, render_template, request
-from pymongo import MongoClient
+from urllib import parse
+import pymongo
 import plotly.graph_objs as go
-from datetime import datetime
+
+app = Flask(__name__)
 
 # db 접속
-app = Flask(__name__)
-client = MongoClient('mongodb://localhost:27017/')
-db = client['term_pj']
-birth_collection = db['birth']
-death_collection = db['death']
+host = "localhost"
+port = "27017"
+user = "use1"
+pwd = "use1"
+db = "term_pj"
+
+client = pymongo.MongoClient("mongodb://{}:".format(user)
+                             + parse.quote(pwd)
+                             + "@{}:{}/{}".format(host, port, db))
+
+db_conn = client.get_database(db)
+birth_collection = db_conn.get_collection("birth")
+death_collection = db_conn.get_collection("death")
 
 
 @app.route('/')
