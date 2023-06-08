@@ -8,8 +8,8 @@ app = Flask(__name__)
 # db 접속
 host = "localhost"
 port = "27017"
-user = "use1"
-pwd = "use1"
+user = "user1"
+pwd = "user1"
 db = "term_pj"
 
 client = pymongo.MongoClient("mongodb://{}:".format(user)
@@ -30,7 +30,6 @@ def index():
 
 @app.route('/graph', methods=['POST'])
 def graph():
-
     # 선택한 조회 기간과 데이터 유형(birth/death) 받아오기
     start_date = request.form.get('start_date')
     end_date = request.form.get('end_date')
@@ -46,19 +45,16 @@ def graph():
         return render_template('graph.html', error_message='err')
 
     query = {
-        "$and": [
-            {"조회기간": {"$gte": start_date}},
-            {"조회기간": {"$lte": end_date}}
-        ]
+        "조회기간": {"$gte": start_date, "$lte": end_date}
     }
 
     data = list(collection.find(query))
 
     # 남자와 여자의 건수 비교 그래프 생성
-    gender_graph = create_gender_comparison_graph(data,data_type)
+    gender_graph = create_gender_comparison_graph(data, data_type, start_date, end_date, collection)
 
     # 시도 별 건수 그래프 생성
-    district_graph = create_district_graph(data)
+    district_graph = create_district_graph(data, collection)
 
     return render_template('graph.html', gender_graph=gender_graph, district_graph=district_graph, title=graph_title)
 
@@ -76,27 +72,52 @@ def get_date_options():
     return options
 
 
-def create_gender_comparison_graph(data, data_type):
+def create_gender_comparison_graph(data, data_type, start_date, end_date, collection):
     # 남자와 여자의 건수 비교 그래프 생성
+    male_counts = {}
+    female_counts = {}
+
+    pipeline = [
+        {
+            '$match': {
+                "조회기간": {"$gte": start_date, "$lte": end_date}
+            }
+        },
+        {
+            '$group': {
+                '_id': {
+                    'gender': '$성별',
+                    'date': '$조회기간'
+                },
+                'count': {'$sum': {'$toInt': '$건수'}}
+            }
+        },
+        {
+            '$group': {
+                '_id': '$_id.date',
+                'male_counts': {
+                    '$sum': {
+                        '$cond': [{'$eq': ['$_id.gender', '남자']}, '$count', 0]
+                    }
+                },
+                'female_counts': {
+                    '$sum': {
+                        '$cond': [{'$eq': ['$_id.gender', '여자']}, '$count', 0]
+                    }
+                }
+            }
+        }
+    ]
+
+    result = collection.aggregate(pipeline)
 
     male_counts = {}
     female_counts = {}
 
-    for item in data:
-        gender = item['성별']
-        count = int(item['건수'])
-        date = item['조회기간']
-
-        if gender == '남자':
-            if date in male_counts:
-                male_counts[date] += count
-            else:
-                male_counts[date] = count
-        elif gender == '여자':
-            if date in female_counts:
-                female_counts[date] += count
-            else:
-                female_counts[date] = count
+    for doc in result:
+        date = doc['_id']
+        male_counts[date] = doc['male_counts']
+        female_counts[date] = doc['female_counts']
 
     dates = list(set(male_counts.keys()).union(set(female_counts.keys())))
     dates.sort()
@@ -104,7 +125,6 @@ def create_gender_comparison_graph(data, data_type):
     x = [date for date in dates]
     male_y = [male_counts[date] if date in male_counts else 0 for date in dates]
     female_y = [female_counts[date] if date in female_counts else 0 for date in dates]
-
 
     if data_type == 'birth':
         title = '남녀 출생 비율'
@@ -121,21 +141,34 @@ def create_gender_comparison_graph(data, data_type):
     return fig.to_html(full_html=False)
 
 
-def create_district_graph(data):
+def create_district_graph(data, collection):
     # 시도 별 건수 그래프 생성
     district_counts = {}
 
-    for item in data:
-        district = item['시도']
-        count = int(item['건수'])
+    pipeline = [
+        {
+            '$group': {
+                '_id': '$시도',
+                'count': {'$sum': {'$toInt': '$건수'}}
+            }
+        },
+        {
+            '$project': {
+                '_id': 0,
+                'district': '$_id',
+                'count': 1
+            }
+        }
+    ]
 
-        if district in district_counts:
-            district_counts[district] += count
-        else:
-            district_counts[district] = count
+    result = collection.aggregate(pipeline)
 
-    x = list(district_counts.keys())
-    y = list(district_counts.values())
+    x = []
+    y = []
+
+    for doc in result:
+        x.append(doc['district'])
+        y.append(doc['count'])
 
     trace = go.Bar(x=x, y=y)
 

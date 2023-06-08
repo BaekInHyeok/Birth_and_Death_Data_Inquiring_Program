@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Birth Data</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div id="chart"></div>
+    <script>
+        var data = {
+            x: {{ data.지역 | tojson }},
+            y: {{ data.차이비율 | tojson }},
+            type: 'bar'
+        };
+
+        var layout = {
+            title: '남자와 여자의 건수 차이 비율 top5 지역',
+            xaxis: {
+                title: '지역'
+            },
+            yaxis: {
+                title: '차이 비율'
+            }
+        };
+
+        var chartData = [data];
+        Plotly.newPlot('chart', chartData, layout);
+    </script>
+</body>
+</html>
