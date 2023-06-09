@@ -47,6 +47,34 @@
       h5 {
         border-bottom: 1px solid black;
       }
+      #title{
+        text-align: center;
+      }
+      .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 20vh;
+      }
+
+      form {
+        text-align: center;
+      }
+      #birth_death{
+        padding: 10px;
+        width: 150px;
+        font-size: 16px;
+      }
+      input[type="text"], select{
+        padding: 10px;
+        width: 250px;
+        font-size: 16px;
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+      }
     </style>
   </head>
   <body>
@@ -59,28 +87,66 @@
     </div>
 
     <div class="main">
-      <h1>검색 결과</h1>
+      <h1 id = "title">지역별 {{ choice }}통계 조회</h1>
+      <div class="container">
+        <form action="/region" method="get">
+          <select id = "birth_death" name="birth_death">
+            <option value="출생">출생데이터</option>
+            <option value="사망">사망데이터</option>
+          </select>
+          <select name="region">
+            <option value="서울특별시">서울특별시</option>
+            <option value="부산광역시">부산광역시</option>
+            <option value="대구광역시">대구광역시</option>
+            <option value="인천광역시">인천광역시</option>
+            <option value="광주광역시">광주광역시</option>
+            <option value="대전광역시">대전광역시</option>
+            <option value="울산광역시">울산광역시</option>
+            <option value="세종특별자치시">세종특별자치시</option>
+            <option value="경기도">경기도</option>
+            <option value="강원도">강원도</option>
+            <option value="충청북도">충청북도</option>
+            <option value="충청남도">충청남도</option>
+            <option value="전라북도">전라북도</option>
+            <option value="전라남도">전라남도</option>
+            <option value="경상북도">경상북도</option>
+            <option value="경상남도">경상남도</option>
+            <option value="제주특별자치도">제주특별자치도</option>
+          </select>
+          <input
+            type="text"
+            name="search"
+            placeholder="세부입력(시,군,구)"
+            autocomplete="off"
+          />
+          <button type="submit">검색</button>
+        </form>
+      </div>
+      {% if results is defined %}
       <div id="plot">{{ graph|safe }}</div>
       <div id="plot2">{{ pie|safe }}</div>
-      <div>
-        <table>
-          <thead>
-            <tr>
-              <th>년월</th>
-              <th>지역</th>
-              <th>건수</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for data in results %}
-            <tr>
-              <td>{{ data['date'] }}</td>
-              <td>{{ data['region'] }}</td>
-              <td>{{ data['total'] }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div id="table">
+        <div>
+          <table>
+            <thead>
+              <tr>
+                <th>년월</th>
+                <th>지역</th>
+                <th>건수</th>
+              </tr>
+            </thead>
+        {% endif %}
+            <tbody>
+              {% for data in results %}
+              <tr>
+                <td>{{ data['date'] }}</td>
+                <td>{{ data['region'] }}</td>
+                <td>{{ data['total'] }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </body>

@@ -15,7 +15,7 @@ from urllib import parse
 import plotly.graph_objects as go
 
 from query import *
-
+import garbage
 
 class TextForm(FlaskForm):
     content = StringField('내용', validators=[DataRequired()])
@@ -24,11 +24,11 @@ class TextForm(FlaskForm):
 app = Flask(__name__)
 
 ###db 접속###
-host="localhost"
-port="27017"
-user="user1"
-pwd="user1"
-db="TeamProject"
+host = "localhost"
+port = "27017"
+user = "user2"
+pwd = "admin"
+db = "bigdata_ch1"
     
 client=pymongo.MongoClient("mongodb://{}:".format(user)
                                +parse.quote(pwd)
@@ -36,7 +36,7 @@ client=pymongo.MongoClient("mongodb://{}:".format(user)
     
 db_conn=client.get_database(db)
     
-collection1=db_conn.get_collection("Birth")
+collection1=db_conn.get_collection("birth_data")
 collection2=db_conn.get_collection("Death")
 
 
@@ -52,20 +52,38 @@ def conn():
 
 ###지역검색용###
 def conn2(case, region, keyword):
-    collection=db_conn.get_collection("Birth")
-    
-    #쿼리 불러오기
+    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection = db_conn.get_collection(collection_name)
+
     pipeline = return_query(case, region, keyword)
 
     #쿼리 실행
     results = collection.aggregate(pipeline)
 
     #일반 케이스
-    if case != 3:
+    if case == 1 or case == 2:
         return results
     
     #리스트 리턴
-    elif case == 3:
+    elif case == 3 or case == 6:
+        list = []
+        for d in results:
+            date = (d["_id"]["년도"] +'.'+ d["_id"]["월"])
+            region = (d["_id"]["읍면"])
+            total = d["건수"]
+            temp = {
+                "date" : date,
+                "region" : region,
+                "total" : total
+            }
+            list.append(temp)
+        
+        return list
+
+    elif case == 4 or 5:
+        return results
+    
+    else :
         list = []
         for d in results:
             date = (d["_id"]["년도"] +'.'+ d["_id"]["월"])
@@ -154,7 +172,7 @@ def create_district_graph(data, collection):
     
     district_counts = {}
 
-    pipeline = regionQuery();
+    pipeline = regionQuery()
 
     result = collection.aggregate(pipeline)
 
@@ -216,77 +234,176 @@ def Datesearch():
 ###지역별 검색 결과 그래프 페이지###
 @app.route("/region", methods=['GET'])
 def region_graph():
+    choice = request.args.get('birth_death')   #출생 or 사망
     region = request.args.get('region')   #지역
     keyword = request.args.get('search')  #세부지역
 
-    #지역 검색(상세 시도군 설정X)
-    if keyword is None or keyword.strip() == "":
-        #각 쿼리 실행
-        results = list(conn2(1, region, keyword))       #리스트 형태로 변화(안하면 에러)
-        list_results = conn2(3, region, keyword)
-        max_year = region_search_max_year(region)
-        list_results_region_sort = region_sort_max_year(region)
+    #출생 데이터 선택 시
+    if choice == "출생":
+        #지역 검색(상세 시도군 설정X)
+        if keyword is None or keyword.strip() == "":
+            #각 쿼리 실행
+            results = list(conn2(1, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            list_results = conn2(3, region, keyword)
+            max_year = region_search_max_year(region, 1)
+            list_results_region_sort = region_sort_max_year(region, 1)
+            
+            #막대그래프 그리기
+            men_data = [d['건수'] for d in results if d['성별'] == '남자']
+            women_data = [d['건수'] for d in results if d['성별']== '여자']
+            year = sorted(set([d['년도'] for d in results]))
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
+            fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
+
+            fig.update_layout(
+                title=region + ' ' +'년도별 남녀 출생 데이터',
+                xaxis_title='년도',
+                yaxis_title='건수',
+                barmode='group'
+            )
+
+            graph = fig.to_html(full_html=False)
+
+            #파이차트 그리기
+            total_values = [item['total'] for item in list_results_region_sort]
+            region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            
+            total_sum = sum(total_values)
+            percentages = [(value / total_sum) * 100 for value in total_values]
+
+            fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
+            fig2.update_layout(title= max_year + "년도 " + region + "지역 상위 6개 데이터")
+            
+            pie = fig2.to_html(full_html=False)
+
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
         
-        #막대그래프 그리기
-        men_data = [d['건수'] for d in results if d['성별'] == '남자']
-        women_data = [d['건수'] for d in results if d['성별']== '여자']
-        year = sorted(set([d['년도'] for d in results]))
+        #지역 상세 검색
+        else :
+            results = list(conn2(2, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            list_results = sort_list(region, keyword)
+            max_year = garbage.region_search_max_year2(region, keyword, 1)
+            list_results_region_sort = garbage.region_sort_max_year2(region, keyword, 1)
+
+            men_data = [d['건수'] for d in results if d['성별'] == '남자']
+            women_data = [d['건수'] for d in results if d['성별']== '여자']
+            year = sorted(set([d['년도'] for d in results]))
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
+            fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
+
+            fig.update_layout(
+                title=region + ' ' + keyword + ' ' +'년도별 남녀 출생 데이터',
+                xaxis_title='년도',
+                yaxis_title='건수',
+                barmode='group'
+            )
+
+            #graph = fig.to_html(full_html=False, default_height=500, default_width=700)
+            graph = fig.to_html(full_html=False)
+            
+            #파이차트 그리기
+            total_values = [item['total'] for item in list_results_region_sort]
+            region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            
+            total_sum = sum(total_values)
+            percentages = [(value / total_sum) * 100 for value in total_values]
+
+            fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
+            fig2.update_layout(title= max_year + "년도 " + region + " " + keyword + "지역 상위 6개 데이터")
+            
+            pie = fig2.to_html(full_html=False)
+
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
         
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
-        fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
+    #사망 데이터 선택 시
+    else:
+        #지역 검색(상세 시도군 설정X)
+        if keyword is None or keyword.strip() == "":
+            #각 쿼리 실행
+            results = list(conn2(4, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            list_results = conn2(6, region, keyword)
+            max_year = region_search_max_year(region, 4)
+            list_results_region_sort = region_sort_max_year(region, 4)
 
-        fig.update_layout(
-            title=region + ' ' +'년도별 남녀 출생 데이터',
-            xaxis_title='년도',
-            yaxis_title='건수',
-            barmode='group'
-        )
+            #막대그래프 그리기
+            men_data = [d['건수'] for d in results if d['성별'] == '남자']
+            women_data = [d['건수'] for d in results if d['성별']== '여자']
+            year = sorted(set([d['년도'] for d in results]))
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
+            fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
 
-        graph = fig.to_html(full_html=False)
+            fig.update_layout(
+                title=region + ' ' +'년도별 남녀 사망 데이터',
+                xaxis_title='년도',
+                yaxis_title='건수',
+                barmode='group'
+            )
 
-        #파이차트 그리기
-        total_values = [item['total'] for item in list_results_region_sort]
-        region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            graph = fig.to_html(full_html=False)
+
+            #파이차트 그리기
+            total_values = [item['total'] for item in list_results_region_sort]
+            region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            
+            total_sum = sum(total_values)
+            percentages = [(value / total_sum) * 100 for value in total_values]
+
+            fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
+            fig2.update_layout(title= max_year + "년도 " + region + " " + keyword + "지역 상위 6개 데이터")
+            
+            pie = fig2.to_html(full_html=False)
+
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
         
-        total_sum = sum(total_values)
-        percentages = [(value / total_sum) * 100 for value in total_values]
+        #지역 상세 검색(사망)
+        else :
+            results = list(conn2(5, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            list_results = sort_list(region, keyword)
+            max_year = garbage.region_search_max_year2(region, keyword, 4)
+            list_results_region_sort = garbage.region_sort_max_year2(region, keyword, 4)
 
-        fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
-        fig2.update_layout(title= max_year + "년도 " + region + "지역 상위 6개 데이터")
-        
-        pie = fig2.to_html(full_html=False)
+            men_data = [d['건수'] for d in results if d['성별'] == '남자']
+            women_data = [d['건수'] for d in results if d['성별']== '여자']
+            year = sorted(set([d['년도'] for d in results]))
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
+            fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
 
-        return render_template('region_graph.html', graph=graph, results = list_results, pie = pie)
-    
-    #지역 상세 검색
-    else :
-        results = list(conn2(2, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            fig.update_layout(
+                title=region + ' ' + keyword + ' ' +'년도별 남녀 사망 데이터',
+                xaxis_title='년도',
+                yaxis_title='건수',
+                barmode='group'
+            )
 
-        men_data = [d['건수'] for d in results if d['성별'] == '남자']
-        women_data = [d['건수'] for d in results if d['성별']== '여자']
-        year = sorted(set([d['년도'] for d in results]))
-        
-        fig = go.Figure()
-        fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
-        fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
+            #graph = fig.to_html(full_html=False, default_height=500, default_width=700)
+            graph = fig.to_html(full_html=False)
 
-        fig.update_layout(
-            title=region + ' ' + keyword + ' ' +'년도별 남녀 출생 데이터',
-            xaxis_title='년도',
-            yaxis_title='건수',
-            barmode='group'
-        )
+            #파이차트 그리기
+            total_values = [item['total'] for item in list_results_region_sort]
+            region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            
+            total_sum = sum(total_values)
+            percentages = [(value / total_sum) * 100 for value in total_values]
 
-        #graph = fig.to_html(full_html=False, default_height=500, default_width=700)
-        graph = fig.to_html(full_html=False)
+            fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
+            fig2.update_layout(title= max_year + "년도 " + region + " " + keyword + "지역 상위 6개 데이터")
+            
+            pie = fig2.to_html(full_html=False)
 
-        return render_template('region_graph.html', graph=graph)
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
 
 ###지역별 검색 페이지###    
 @app.route('/regionSearch')
 def region_search():
-    return render_template('region_search.html')
+    return render_template('region_graph.html')
 
 ###기타 통계 페이지###
 @app.route('/etc')
@@ -333,10 +450,6 @@ def etc():
         yaxis_title='발생건수'
     )
     
-    chart1 = fig1.to_html(full_html=False)
-    chart2 = fig2.to_html(full_html=False)
-    
-    
     ####지역 남녀 출생비율차 TOP5###
     result3=conn4()
 
@@ -349,7 +462,46 @@ def etc():
         data["지역"].append(result["지역"])
         data["차이비율"].append(result["차이비율"])
     
-    return render_template('etc.html', chart1=chart1, chart2=chart2, data=data)
+    #지역별 출생률 하락 차트 그리는 부분
+    sorted_results = sort_droprate()        #정렬 쿼리 리스트로 가져옴
+    
+    regions = [data['region'] for data in sorted_results]
+    rates = [data['rate'] for data in sorted_results]
+
+    colors = []
+    for rate in rates:
+        if rate > 50:
+            colors.append('red')
+        elif rate > 40:
+            colors.append('orange')
+        elif rate > 30:
+            colors.append('yellow')
+
+    text = [f'{rate:.2f}%' for rate in rates] #퍼센테이지 소숫점아래 2자리표시
+
+    fig3 = go.Figure(data=[
+        go.Bar(
+            x=rates,
+            y=regions,
+            orientation='h',
+            marker=dict(color=colors),
+            text=text,
+            textposition='auto'
+        )
+    ])
+
+    fig3.update_layout(
+        title='지역별 하락률',
+        xaxis=dict(title='하락률'),
+        yaxis=dict(title='지역')
+    )
+
+    #차트추가
+    chart1 = fig1.to_html(full_html=False)
+    chart2 = fig2.to_html(full_html=False)
+    chart3 = fig3.to_html(full_html=False)
+
+    return render_template('etc.html', chart1=chart1, chart2=chart2, chart3 = chart3, data=data)
 
 ###메인페이지###
 @app.route("/")
