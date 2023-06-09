@@ -91,3 +91,78 @@ def region_sort_max_year2(region, keyword, case):
         list.append(temp)
 
     return list
+
+#하락순 정렬 쿼리
+def sort_birth_list(region, keyword):
+    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+    if keyword is not None:
+        pipeline=[
+                {
+                    '$match':{
+                        "시도": region,
+                        "시군구":{
+                            "$regex": keyword
+                        },
+                        '읍면': {'$ne': '재외국민 가족관계등록사무소'}
+                    }
+                },
+                {
+                    '$group': {
+                        '_id': {
+                            '년도': {'$substr': ['$조회기간', 0, 4]},
+                            '월': {'$substr': ['$조회기간', 5, 2]},
+                            '읍면': '$읍면'
+                        },
+                        '건수': {'$sum': {'$toInt': '$건수'}}
+                    }
+                },
+                {
+                    '$sort': {'건수': 1}
+                },
+                {
+                    '$limit': 10
+                }
+        ]
+
+    else:
+        pipeline=[
+                {
+                    '$match':{
+                        "시도": region,
+                        '읍면': {'$ne': '재외국민 가족관계등록사무소'}
+                    }
+                },
+                {
+                    '$group': {
+                        '_id': {
+                            '년도': {'$substr': ['$조회기간', 0, 4]},
+                            '월': {'$substr': ['$조회기간', 5, 2]},
+                            '읍면': '$읍면'
+                        },
+                        '건수': {'$sum': {'$toInt': '$건수'}}
+                    }
+                },
+                {
+                    '$sort': {'건수': 1}
+                },
+                {
+                    '$limit': 10
+                }
+        ]
+
+    results = collection.aggregate(pipeline)
+    list = []
+    for d in results:
+        date = (d["_id"]["년도"])
+        township = (d["_id"]["읍면"])
+        total = d["건수"]
+        temp = {
+            "date" : date,
+            "region" : township,
+            "total" : total
+        }
+        list.append(temp)
+    for d in list:
+        print(d)
+        
+sort_birth_list('충청북도',None)
