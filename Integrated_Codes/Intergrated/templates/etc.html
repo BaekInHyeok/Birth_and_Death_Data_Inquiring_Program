@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Test</title>
+    <title>기타 통계 페이지</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
       .sidenav {
@@ -49,6 +49,7 @@
       }
     </style>
   </head>
+
   <body>
     <!-- 메뉴바 -->
     <div class="sidenav">
@@ -58,30 +59,43 @@
       <a href="{{url_for('etc')}}">기타</a>
     </div>
 
+    <!-- 본문 -->
     <div class="main">
-      <h1>검색 결과</h1>
-      <div id="plot">{{ graph|safe }}</div>
-      <div id="plot2">{{ pie|safe }}</div>
-      <div>
-        <table>
-          <thead>
-            <tr>
-              <th>년월</th>
-              <th>지역</th>
-              <th>건수</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for data in results %}
-            <tr>
-              <td>{{ data['date'] }}</td>
-              <td>{{ data['region'] }}</td>
-              <td>{{ data['total'] }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <h1>기타 통계</h1>
+      <h5></h5>
+      <h2>월별 출생/사망 Top3</h2>
+      <div style="float: left; width: 50%">
+        <h3>월별 출생자 Top3</h3>
+        {{chart1|safe}}
       </div>
+      <div style="float: left; width: 50%">
+        <h3>월별 사망자 Top3</h3>
+        {{chart2|safe}}
+      </div>
+
+      <h2>남녀 출생 비율</h2>
+
+      <div id="chart"></div>
+      <script>
+        var data = {
+            x: {{ data.지역 | tojson }},
+            y: {{ data.차이비율 | tojson }},
+            type: 'bar'
+        };
+
+        var layout = {
+            title: '남녀 출생 비율 차이 top5 지역',
+            xaxis: {
+                title: '지역'
+            },
+            yaxis: {
+                title: '차이 비율'
+            }
+        };
+
+        var chartData = [data];
+        Plotly.newPlot('chart', chartData, layout);
+      </script>
     </div>
   </body>
 </html>

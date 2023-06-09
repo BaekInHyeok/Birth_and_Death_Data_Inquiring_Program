@@ -40,15 +40,27 @@
       }
 
       h2 {
-        font-size: 25px;
+        font-size: 30px;
       }
 
       h3 {
-        font-size: 15px;
+        font-size: 20px;
       }
 
       h5 {
         border-bottom: 1px solid black;
+      }
+
+      input {
+        font-size: 25px;
+      }
+
+      select {
+        font-size: 25px;
+      }
+
+      button {
+        font-size: 25px;
       }
     </style>
   </head>
@@ -56,12 +68,13 @@
     <!-- 메뉴바 -->
     <div class="sidenav">
       <a href="{{url_for('home_page')}}">메인화면</a>
-      <a href="">날짜구간조회</a>
+      <a href="{{url_for('Datesearch')}}">날짜구간조회</a>
       <a href="{{url_for('region_search')}}">지역별 조회</a>
-      <a href="#Top5">기타</a>
+      <a href="{{url_for('etc')}}">기타</a>
     </div>
 
     <div class="container">
+      <h1>지역별 통계 조회</h1>
       <form action="/region" method="get">
         <select name="region">
           <option value="서울특별시">서울특별시</option>
@@ -85,7 +98,8 @@
         <input
           type="text"
           name="search"
-          placeholder="검색하실 세부지역을 입력하세요(시,군,구)"
+          placeholder="세부입력(시,군,구)"
+          autocomplete="off"
         />
         <button type="submit">검색</button>
       </form>

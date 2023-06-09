@@ -34,6 +34,7 @@ def return_query(case, region, keyword):
                 "$sort": { "년도": 1 }
             }
         ]
+        
     elif case == 2:
         pipeline=[
             {
@@ -68,6 +69,7 @@ def return_query(case, region, keyword):
                 "$sort": { "년도": 1}
             }
         ]
+        
     elif case==3:
         pipeline=[
             {
@@ -192,11 +194,117 @@ def region_sort_max_year(region):
 
     return list
 
+def GenderComparision(start_date,end_date):
+    pipeline=[
+        {
+            '$match': {
+                "조회기간": {"$gte": start_date, "$lte": end_date}
+            }
+        },
+        {
+            '$group': {
+                '_id': {
+                    'gender': '$성별',
+                    'date': '$조회기간'
+                },
+                'count': {'$sum': {'$toInt': '$건수'}}
+            }
+        },
+        {
+            '$group': {
+                '_id': '$_id.date',
+                'male_counts': {
+                    '$sum': {
+                        '$cond': [{'$eq': ['$_id.gender', '남자']}, '$count', 0]
+                    }
+                },
+                'female_counts': {
+                    '$sum': {
+                        '$cond': [{'$eq': ['$_id.gender', '여자']}, '$count', 0]
+                    }
+                }
+            }
+        }
+    ]
+    
+    return pipeline
+
+def regionQuery():
+    pipeline=[
+        {
+            '$group': {
+                '_id': '$시도',
+                'count': {'$sum': {'$toInt': '$건수'}}
+            }
+        },
+        {
+            '$project': {
+                '_id': 0,
+                'district': '$_id',
+                'count': 1
+            }
+        }
+    ]
+    
+    return pipeline
+
+def Top3Query():
+    pipeline=[
+        {
+            "$group":{
+                "_id": {
+                    "월": { "$substr": ["$조회기간", 5, 2] }
+                },
+                "발생건수": { "$sum": { "$toInt": "$건수" } }
+            }
+        },
+        {
+            "$sort": {
+                "발생건수": -1
+            }
+        },
+        {
+            "$limit": 3
+        }
+    ]
+    
+    return pipeline
+
+def ManWomanTop5():
+    pipeline=[
+        {"$group": {
+            "_id": {"시도": "$시도", "시군구": "$시군구", "성별": "$성별"},
+            "건수": {"$sum": {"$toInt": "$건수"}}
+        }},
+        {"$group": {
+            "_id": {"시도": "$_id.시도", "시군구": "$_id.시군구"},
+            "남자": {"$sum": {"$cond": [{"$eq": ["$_id.성별", "남자"]}, "$건수", 0]}},
+            "여자": {"$sum": {"$cond": [{"$eq": ["$_id.성별", "여자"]}, "$건수", 0]}}
+        }},
+        {"$project": {
+            "_id": 0,
+            "지역": {"$concat": ["$_id.시군구", ", ", "$_id.시도"]},
+            "차이비율": {
+                "$cond": {
+                    "if": {"$eq": ["$남자", 0]},
+                    "then": 0,
+                    "else": {"$abs": {"$divide": [{"$subtract": ["$남자", "$여자"]}, "$남자"]}}
+                }
+            }
+        }},
+        {"$sort": {"차이비율": -1}},
+        {"$limit": 5}
+    ]
+    
+    return pipeline
+
 def MainPageQuery():
     pipeline = [
         {
             "$group": {
-                "_id": "$조회기간",
+                "_id": {
+                    "연도": { "$substr": ["$조회기간", 0, 4] }
+                },
                 "발생건수": {"$sum": {"$toInt": "$건수"}}
             }
         },

@@ -22,22 +22,26 @@ class TextForm(FlaskForm):
     
 #Config setting
 app = Flask(__name__)
+
+###db 접속###
+host="localhost"
+port="27017"
+user="user1"
+pwd="user1"
+db="TeamProject"
     
-def conn():
-    host="localhost"
-    port="27017"
-    user="user1"
-    pwd="user1"
-    db="TeamProject"
-    
-    client=pymongo.MongoClient("mongodb://{}:".format(user)
+client=pymongo.MongoClient("mongodb://{}:".format(user)
                                +parse.quote(pwd)
                                +"@{}:{}/{}".format(host,port,db))
     
-    db_conn=client.get_database(db)
+db_conn=client.get_database(db)
     
-    collection1=db_conn.get_collection("Birth")
-    collection2=db_conn.get_collection("Death")
+collection1=db_conn.get_collection("Birth")
+collection2=db_conn.get_collection("Death")
+
+
+###메인화면용###    
+def conn():
     
     pipeline = MainPageQuery()
     
@@ -46,19 +50,8 @@ def conn():
     
     return result1, result2
 
+###지역검색용###
 def conn2(case, region, keyword):
-    host="localhost"
-    port="27017"
-    user="user1"
-    pwd="user1"
-    db="TeamProject"
-    
-    client=pymongo.MongoClient("mongodb://{}:".format(user)
-                               +parse.quote(pwd)
-                               +"@{}:{}/{}".format(host,port,db))
-    
-    db_conn=client.get_database(db)
-    
     collection=db_conn.get_collection("Birth")
     
     #쿼리 불러오기
@@ -86,7 +79,141 @@ def conn2(case, region, keyword):
             list.append(temp)
         
         return list
+    
+###기타통계-월별###
+def conn3():    
+    pipeline = Top3Query()
+    
+    result1=collection1.aggregate(pipeline)
+    result2=collection2.aggregate(pipeline)
+    
+    return result1, result2
 
+###기타통계-남녀성비###
+def conn4():
+    pipeline=ManWomanTop5()
+    
+    result3=collection1.aggregate(pipeline)
+    
+    return result3
+
+###조회 기간 드롭다운 옵션 생성###
+def get_date_options():
+    
+    options = []
+    years = range(2008, 2023)
+
+    for year in years:
+        for month in range(1, 13):
+            option = f"{year}.{month:02d}"
+            options.append(option)
+
+    return options
+
+###남자와 여자의 건수 비교 그래프 생성###
+def create_gender_comparison_graph(data, data_type, start_date, end_date, collection):
+    
+    male_counts = {}
+    female_counts = {}
+
+    pipeline = GenderComparision(start_date,end_date)
+
+    result = collection.aggregate(pipeline)
+
+    male_counts = {}
+    female_counts = {}
+
+    for doc in result:
+        date = doc['_id']
+        male_counts[date] = doc['male_counts']
+        female_counts[date] = doc['female_counts']
+
+    dates = list(set(male_counts.keys()).union(set(female_counts.keys())))
+    dates.sort()
+
+    x = [date for date in dates]
+    male_y = [male_counts[date] if date in male_counts else 0 for date in dates]
+    female_y = [female_counts[date] if date in female_counts else 0 for date in dates]
+
+    if data_type == 'birth':
+        title = '남녀 출생 비율'
+    elif data_type == 'death':
+        title = '남녀 사망 비율'
+
+    male_trace = go.Bar(x=x, y=male_y, name='남자')
+    female_trace = go.Bar(x=x, y=female_y, name='여자')
+
+    data = [male_trace, female_trace]
+    layout = go.Layout(title=title, xaxis_title='조회 기간', yaxis_title='건수', width=800, height=500)
+    fig = go.Figure(data=data, layout=layout)
+
+    return fig.to_html(full_html=False)
+
+###시도 별 건수 그래프 생성###
+def create_district_graph(data, collection):
+    
+    district_counts = {}
+
+    pipeline = regionQuery();
+
+    result = collection.aggregate(pipeline)
+
+    x = []
+    y = []
+
+    for doc in result:
+        x.append(doc['district'])
+        y.append(doc['count'])
+
+    trace = go.Bar(x=x, y=y)
+
+    data = [trace]
+    layout = go.Layout(title='시도 별 건수', xaxis_title='시도', yaxis_title='건수')
+    fig = go.Figure(data=data, layout=layout)
+
+    return fig.to_html(full_html=False)
+
+###날짜구간 검색 결과 그래프 페이지###
+@app.route('/graph', methods=['POST'])
+def graph():
+    # 선택한 조회 기간과 데이터 유형(birth/death) 받아오기
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    data_type = request.form.get('data_type')
+
+    if data_type == 'birth':
+        collection = collection1
+        graph_title = '출생 데이터'
+    elif data_type == 'death':
+        collection = collection2
+        graph_title = '사망 데이터'
+    else:
+        return render_template('graph.html', error_message='err')
+
+    query = {
+        "조회기간": {"$gte": start_date, "$lte": end_date}
+    }
+
+    data = list(collection.find(query))
+
+    # 남자와 여자의 건수 비교 그래프 생성
+    gender_graph = create_gender_comparison_graph(data, data_type, start_date, end_date, collection)
+
+    # 시도 별 건수 그래프 생성
+    district_graph = create_district_graph(data, collection)
+
+    return render_template('DateGraph.html', gender_graph=gender_graph, district_graph=district_graph, title=graph_title)
+
+
+###날짜 구간 검색 페이지###
+@app.route('/DateSearch')
+def Datesearch():
+   # 조회 기간 드롭다운 옵션 생성
+    options = get_date_options()
+    return render_template('DateSearch.html', options=options) 
+    
+
+###지역별 검색 결과 그래프 페이지###
 @app.route("/region", methods=['GET'])
 def region_graph():
     region = request.args.get('region')   #지역
@@ -155,11 +282,76 @@ def region_graph():
         graph = fig.to_html(full_html=False)
 
         return render_template('region_graph.html', graph=graph)
-    
+
+###지역별 검색 페이지###    
 @app.route('/regionSearch')
 def region_search():
     return render_template('region_search.html')
 
+###기타 통계 페이지###
+@app.route('/etc')
+def etc():
+    
+    ###출생 및 사망 TOP3월###
+    
+    x_data1 = []
+    y_data1 = []
+
+    x_data2 = []
+    y_data2 = []
+    
+    result1, result2 = conn3()
+    
+    # 쿼리 결과를 이용하여 데이터 추출
+    for data in result1:
+        x_data1.append(data['_id']['월'])
+        y_data1.append(data['발생건수'])
+
+    for data in result2:
+        x_data2.append(data['_id']['월'])
+        y_data2.append(data['발생건수'])
+        
+    # 그래프 생성
+    fig1 = go.Figure()
+    fig1.add_trace(go.Bar(x=x_data1, y=y_data1, width=0.3, name='출생'))
+    
+    # 그래프 생성
+    fig2 = go.Figure()
+    fig2.add_trace(go.Bar(x=x_data2, y=y_data2, width=0.3, name='사망'))
+    
+    # 그래프 레이아웃 설정
+    fig1.update_layout(
+        title='월별 출생 그래프',
+        xaxis_title='월',
+        yaxis_title='발생건수'
+    )
+    
+    # 그래프 레이아웃 설정
+    fig2.update_layout(
+        title='월별 사망 그래프',
+        xaxis_title='월',
+        yaxis_title='발생건수'
+    )
+    
+    chart1 = fig1.to_html(full_html=False)
+    chart2 = fig2.to_html(full_html=False)
+    
+    
+    ####지역 남녀 출생비율차 TOP5###
+    result3=conn4()
+
+    # 그래프 데이터 생성
+    data = {
+        "지역": [],
+        "차이비율": []
+    }
+    for result in result3:
+        data["지역"].append(result["지역"])
+        data["차이비율"].append(result["차이비율"])
+    
+    return render_template('etc.html', chart1=chart1, chart2=chart2, data=data)
+
+###메인페이지###
 @app.route("/")
 def home_page():
     # 데이터 초기화
@@ -173,11 +365,11 @@ def home_page():
 
     # 쿼리 결과를 이용하여 데이터 추출
     for data in result1:
-        x_data1.append(data['_id'])
+        x_data1.append(data['_id']['연도'])
         y_data1.append(data['발생건수'])
 
     for data in result2:
-        x_data2.append(data['_id'])
+        x_data2.append(data['_id']['연도'])
         y_data2.append(data['발생건수'])
 
     # 그래프 생성
