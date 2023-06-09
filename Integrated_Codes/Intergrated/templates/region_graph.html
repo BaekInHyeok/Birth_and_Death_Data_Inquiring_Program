@@ -87,7 +87,7 @@
     </div>
 
     <div class="main">
-      <h1 id = "title">지역별 통계 조회</h1>
+      <h1 id = "title">지역별 {{ choice }}통계 조회</h1>
       <div class="container">
         <form action="/region" method="get">
           <select id = "birth_death" name="birth_death">
@@ -122,6 +122,7 @@
           <button type="submit">검색</button>
         </form>
       </div>
+      {% if results is defined %}
       <div id="plot">{{ graph|safe }}</div>
       <div id="plot2">{{ pie|safe }}</div>
       <div id="table">
@@ -134,6 +135,7 @@
                 <th>건수</th>
               </tr>
             </thead>
+        {% endif %}
             <tbody>
               {% for data in results %}
               <tr>

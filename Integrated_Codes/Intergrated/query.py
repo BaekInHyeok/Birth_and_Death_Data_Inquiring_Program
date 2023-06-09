@@ -14,7 +14,7 @@ client = pymongo.MongoClient("mongodb://{}:".format(user)
 db_conn = client.get_database(db)
 
 def return_query(case, region, keyword):
-    if case==1:
+    if case==1 or case == 4:
         pipeline=[
             {
                 "$match":{
@@ -43,7 +43,7 @@ def return_query(case, region, keyword):
             }
         ]
         
-    elif case == 2:
+    elif case == 2 or case == 5:
         pipeline=[
             {
                 "$match":{
@@ -75,7 +75,7 @@ def return_query(case, region, keyword):
             }
         ]
         
-    elif case==3:
+    elif case==3 or case == 6:
         pipeline=[
             {
                 '$match':{
@@ -100,11 +100,13 @@ def return_query(case, region, keyword):
                 '$limit': 10
             }
         ]
+        
     return pipeline
         
 
-def region_search_max_year(region):
-    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+def region_search_max_year(region, case):
+    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection = db_conn.get_collection(collection_name)  
 
     pipeline = [
         {
@@ -132,10 +134,11 @@ def region_search_max_year(region):
     max_year = results[0]["_id"]["년도"]
     return max_year
 
-def region_sort_max_year(region):
-    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+def region_sort_max_year(region, case):
+    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection = db_conn.get_collection(collection_name)  #컬렉션이름
 
-    max_year = region_search_max_year(region)       #최고년도 가져오기
+    max_year = region_search_max_year(region, case)       #최고년도 가져오기
 
     pipeline = [
         {
@@ -377,4 +380,54 @@ def sort_droprate():    #하락률 정렬쿼리
 
     return sorted_results
 
-#망한코드
+#망한코드들
+#지역 상세검색 건수 순 정렬
+def sort_list(region, keyword):
+    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+
+    pipeline=[
+            {
+                '$match':{
+                    "시도": region,
+                    "시군구":{
+                        "$regex": keyword
+                    },
+                    '읍면': {'$ne': '재외국민 가족관계등록사무소'}
+                }
+            },
+            {
+                '$group': {
+                    '_id': {
+                        '년도': {'$substr': ['$조회기간', 0, 4]},
+                        '월': {'$substr': ['$조회기간', 5, 2]},
+                        '읍면': '$읍면'
+                    },
+                    '건수': {'$sum': {'$toInt': '$건수'}}
+                }
+            },
+            {
+                '$sort': {'건수': -1}
+            },
+            {
+                '$limit': 10
+            }
+    ]
+    
+    results = collection.aggregate(pipeline)
+    list = []
+    for d in results:
+        date = (d["_id"]["년도"] +'.'+ d["_id"]["월"])
+        region = (d["_id"]["읍면"])
+        total = d["건수"]
+        temp = {
+            "date" : date,
+            "region" : region,
+            "total" : total
+        }
+        list.append(temp)
+
+
+    for d in list:
+        print(d)
+    
+    return list

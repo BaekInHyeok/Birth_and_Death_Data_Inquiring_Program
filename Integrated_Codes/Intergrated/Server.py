@@ -15,7 +15,7 @@ from urllib import parse
 import plotly.graph_objects as go
 
 from query import *
-
+import garbage
 
 class TextForm(FlaskForm):
     content = StringField('내용', validators=[DataRequired()])
@@ -52,20 +52,38 @@ def conn():
 
 ###지역검색용###
 def conn2(case, region, keyword):
-    collection=db_conn.get_collection("birth_data")
-    
-    #쿼리 불러오기
+    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection = db_conn.get_collection(collection_name)
+
     pipeline = return_query(case, region, keyword)
 
     #쿼리 실행
     results = collection.aggregate(pipeline)
 
     #일반 케이스
-    if case != 3:
+    if case == 1 or case == 2:
         return results
     
     #리스트 리턴
-    elif case == 3:
+    elif case == 3 or case == 6:
+        list = []
+        for d in results:
+            date = (d["_id"]["년도"] +'.'+ d["_id"]["월"])
+            region = (d["_id"]["읍면"])
+            total = d["건수"]
+            temp = {
+                "date" : date,
+                "region" : region,
+                "total" : total
+            }
+            list.append(temp)
+        
+        return list
+
+    elif case == 4 or 5:
+        return results
+    
+    else :
         list = []
         for d in results:
             date = (d["_id"]["년도"] +'.'+ d["_id"]["월"])
@@ -227,8 +245,8 @@ def region_graph():
             #각 쿼리 실행
             results = list(conn2(1, region, keyword))       #리스트 형태로 변화(안하면 에러)
             list_results = conn2(3, region, keyword)
-            max_year = region_search_max_year(region)
-            list_results_region_sort = region_sort_max_year(region)
+            max_year = region_search_max_year(region, 1)
+            list_results_region_sort = region_sort_max_year(region, 1)
             
             #막대그래프 그리기
             men_data = [d['건수'] for d in results if d['성별'] == '남자']
@@ -260,11 +278,14 @@ def region_graph():
             
             pie = fig2.to_html(full_html=False)
 
-            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie)
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
         
         #지역 상세 검색
         else :
             results = list(conn2(2, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            list_results = sort_list(region, keyword)
+            max_year = garbage.region_search_max_year2(region, keyword, 1)
+            list_results_region_sort = garbage.region_sort_max_year2(region, keyword, 1)
 
             men_data = [d['건수'] for d in results if d['성별'] == '남자']
             women_data = [d['건수'] for d in results if d['성별']== '여자']
@@ -283,12 +304,101 @@ def region_graph():
 
             #graph = fig.to_html(full_html=False, default_height=500, default_width=700)
             graph = fig.to_html(full_html=False)
+            
+            #파이차트 그리기
+            total_values = [item['total'] for item in list_results_region_sort]
+            region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            
+            total_sum = sum(total_values)
+            percentages = [(value / total_sum) * 100 for value in total_values]
 
-            return render_template('region_graph.html', graph=graph)
+            fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
+            fig2.update_layout(title= max_year + "년도 " + region + " " + keyword + "지역 상위 6개 데이터")
+            
+            pie = fig2.to_html(full_html=False)
+
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
         
     #사망 데이터 선택 시
     else:
-        return render_template('region_graph.html')
+        #지역 검색(상세 시도군 설정X)
+        if keyword is None or keyword.strip() == "":
+            #각 쿼리 실행
+            results = list(conn2(4, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            list_results = conn2(6, region, keyword)
+            max_year = region_search_max_year(region, 4)
+            list_results_region_sort = region_sort_max_year(region, 4)
+
+            #막대그래프 그리기
+            men_data = [d['건수'] for d in results if d['성별'] == '남자']
+            women_data = [d['건수'] for d in results if d['성별']== '여자']
+            year = sorted(set([d['년도'] for d in results]))
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
+            fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
+
+            fig.update_layout(
+                title=region + ' ' +'년도별 남녀 사망 데이터',
+                xaxis_title='년도',
+                yaxis_title='건수',
+                barmode='group'
+            )
+
+            graph = fig.to_html(full_html=False)
+
+            #파이차트 그리기
+            total_values = [item['total'] for item in list_results_region_sort]
+            region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            
+            total_sum = sum(total_values)
+            percentages = [(value / total_sum) * 100 for value in total_values]
+
+            fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
+            fig2.update_layout(title= max_year + "년도 " + region + " " + keyword + "지역 상위 6개 데이터")
+            
+            pie = fig2.to_html(full_html=False)
+
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
+        
+        #지역 상세 검색(사망)
+        else :
+            results = list(conn2(5, region, keyword))       #리스트 형태로 변화(안하면 에러)
+            list_results = sort_list(region, keyword)
+            max_year = garbage.region_search_max_year2(region, keyword, 4)
+            list_results_region_sort = garbage.region_sort_max_year2(region, keyword, 4)
+
+            men_data = [d['건수'] for d in results if d['성별'] == '남자']
+            women_data = [d['건수'] for d in results if d['성별']== '여자']
+            year = sorted(set([d['년도'] for d in results]))
+            
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=year, y=men_data, name='남자', marker_color='skyblue'))
+            fig.add_trace(go.Bar(x=year, y=women_data, name='여자', marker_color='rgba(255, 192, 203, 1)'))
+
+            fig.update_layout(
+                title=region + ' ' + keyword + ' ' +'년도별 남녀 사망 데이터',
+                xaxis_title='년도',
+                yaxis_title='건수',
+                barmode='group'
+            )
+
+            #graph = fig.to_html(full_html=False, default_height=500, default_width=700)
+            graph = fig.to_html(full_html=False)
+
+            #파이차트 그리기
+            total_values = [item['total'] for item in list_results_region_sort]
+            region_dates = [f"{item['region']} - {item['date']}" for item in list_results_region_sort]
+            
+            total_sum = sum(total_values)
+            percentages = [(value / total_sum) * 100 for value in total_values]
+
+            fig2 = go.Figure(data=[go.Pie(labels=region_dates, values=percentages)])
+            fig2.update_layout(title= max_year + "년도 " + region + " " + keyword + "지역 상위 6개 데이터")
+            
+            pie = fig2.to_html(full_html=False)
+
+            return render_template('region_graph.html', graph=graph, results = list_results, pie = pie, choice = choice)
 
 ###지역별 검색 페이지###    
 @app.route('/regionSearch')
