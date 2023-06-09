@@ -47,6 +47,11 @@
       h5 {
         border-bottom: 1px solid black;
       }
+
+      #dec_title{
+        margin-bottom: 0;
+        line-height: 1;
+      }
     </style>
   </head>
 
@@ -73,8 +78,8 @@
         {{chart2|safe}}
       </div>
 
+      <hr>
       <h2>남녀 출생 비율</h2>
-
       <div id="chart"></div>
       <script>
         var data = {
@@ -96,6 +101,11 @@
         var chartData = [data];
         Plotly.newPlot('chart', chartData, layout);
       </script>
+      <hr>
+      <div>
+        <h3 id = "dec_title">지역별 출생률 하락 그래프</h3>
+          {{chart3|safe}}
+      </div>
     </div>
   </body>
 </html>

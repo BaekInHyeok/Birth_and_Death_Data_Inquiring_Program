@@ -1,16 +1,24 @@
 import pymongo
 from urllib import parse
 
+host = "localhost"
+port = "27017"
+user = "user2"
+pwd = "admin"
+db = "bigdata_ch1"
+
+client = pymongo.MongoClient("mongodb://{}:".format(user)
+                                + parse.quote(pwd)
+                                + "@{}:{}/{}".format(host, port, db))
+
+db_conn = client.get_database(db)
+
 def return_query(case, region, keyword):
-    
     if case==1:
         pipeline=[
             {
                 "$match":{
-                    "시도":region,
-                    "조회기간":{
-                        "$regex":"20(0[8-9]|1[0-9]|2[0-2])"
-                    }
+                    "시도":region
                 }
             },
             {
@@ -42,9 +50,6 @@ def return_query(case, region, keyword):
                     "시도": region,
                     "시군구":{
                         "$regex": keyword
-                    },
-                    "조회기간": {
-                        "$regex": "20(0[8-9]|1[0-9]|2[0-2])"
                     }
                 }
             },
@@ -99,24 +104,12 @@ def return_query(case, region, keyword):
         
 
 def region_search_max_year(region):
-    host="localhost"
-    port="27017"
-    user="user1"
-    pwd="user1"
-    db="TeamProject"
-    
-    client=pymongo.MongoClient("mongodb://{}:".format(user)
-                               +parse.quote(pwd)
-                               +"@{}:{}/{}".format(host,port,db))
-    
-    db_conn=client.get_database(db)
-    collection = db_conn.get_collection("Birth")  #컬렉션이름
+    collection = db_conn.get_collection("birth_data")  #컬렉션이름
 
     pipeline = [
         {
             "$match": {
-                "시도": region,
-                "조회기간": { "$regex": "20(0[8-9]|1[0-9]|2[0-2])" }
+                "시도": region
             }
         },
         {
@@ -140,18 +133,7 @@ def region_search_max_year(region):
     return max_year
 
 def region_sort_max_year(region):
-    host="localhost"
-    port="27017"
-    user="user1"
-    pwd="user1"
-    db="TeamProject"
-
-    client = pymongo.MongoClient("mongodb://{}:".format(user)
-                                  + parse.quote(pwd)
-                                  + "@{}:{}/{}".format(host, port, db))
-
-    db_conn = client.get_database(db)
-    collection = db_conn.get_collection("Birth")  #컬렉션이름
+    collection = db_conn.get_collection("birth_data")  #컬렉션이름
 
     max_year = region_search_max_year(region)       #최고년도 가져오기
 
@@ -316,3 +298,83 @@ def MainPageQuery():
     ]
 
     return pipeline
+
+def sort_droprate():    #하락률 정렬쿼리
+    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+
+    pipeline_2008 = [
+        {
+            "$match": {
+                "조회기간": { "$regex": "^2008" }
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    '시도': '$시도'
+                },
+                "건수": { "$sum": { "$toInt": "$건수" } }
+            }
+        }
+    ]   
+
+    pipeline_2022 = [
+        {
+            "$match": {
+                "조회기간": { "$regex": "^2022" }
+            }
+        },
+        {
+            "$group": {
+                "_id": {
+                    '시도': '$시도'
+                },
+                "건수": { "$sum": { "$toInt": "$건수" } }
+            }
+        }
+    ]   
+
+    results_2008 = collection.aggregate(pipeline_2008)
+    results_2022 = collection.aggregate(pipeline_2022)
+
+    list_2008 = []
+    for d in results_2008:
+        region = (d["_id"]["시도"])
+        total = d["건수"]
+        temp = {
+            "region" : region,
+            "total" : total
+        }
+        list_2008.append(temp)
+
+    list_2022 = []
+    for d in results_2022:
+        region = (d["_id"]["시도"])
+        total = d["건수"]
+        temp = {
+            "region" : region,
+            "total" : total
+        }
+        list_2022.append(temp)
+
+    results = []
+    for i in range(len(list_2008)):
+        region = list_2008[i]['region']
+        total_2008 = list_2008[i]['total']
+        
+        for j in range(len(list_2022)):
+            if list_2022[j]['region'] == region:
+                total_2022 = list_2022[j]['total']
+                rate = ((total_2008 - total_2022) / total_2008) * 100
+                temp = {
+                    "region" : region,
+                    "rate" : rate
+                }
+                results.append(temp)
+                break
+
+    sorted_results = sorted(results, key=lambda x: x["rate"]) #내림차순정렬
+
+    return sorted_results
+
+#망한코드
