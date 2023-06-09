@@ -1,12 +1,22 @@
 from flask import Flask, render_template
-from pymongo import MongoClient
+from urllib import parse
+import pymongo
 
 app = Flask(__name__)
 
 # MongoDB 연결 설정
-client = MongoClient('mongodb://localhost:27017/')
-db = client['term_pj']
-collection = db['birth']
+host = "localhost"
+port = "27017"
+user = "user1"
+pwd = "user1"
+db = "term_pj"
+
+client = pymongo.MongoClient("mongodb://{}:".format(user)
+                             + parse.quote(pwd)
+                             + "@{}:{}/{}".format(host, port, db))
+
+db_conn = client.get_database(db)
+collection = db_conn.get_collection("birth")
 
 @app.route('/')
 def index():
