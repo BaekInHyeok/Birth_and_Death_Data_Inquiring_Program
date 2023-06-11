@@ -24,11 +24,11 @@ class TextForm(FlaskForm):
 app = Flask(__name__)
 
 ###db 접속###
-host = "localhost"
-port = "27017"
-user = "user2"
-pwd = "admin"
-db = "bigdata_ch1"
+host="localhost"
+port="27017"
+user="user1"
+pwd="user1"
+db="TeamProject"
     
 client=pymongo.MongoClient("mongodb://{}:".format(user)
                                +parse.quote(pwd)
@@ -36,7 +36,7 @@ client=pymongo.MongoClient("mongodb://{}:".format(user)
     
 db_conn=client.get_database(db)
     
-collection1=db_conn.get_collection("birth_data")
+collection1=db_conn.get_collection("Birth")
 collection2=db_conn.get_collection("Death")
 
 
@@ -52,7 +52,7 @@ def conn():
 
 ###지역검색용###
 def conn2(case, region, keyword):
-    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection_name = "Birth" if case in [1, 2, 3] else "Death"
     collection = db_conn.get_collection(collection_name)
 
     pipeline = return_query(case, region, keyword)
@@ -162,17 +162,17 @@ def create_gender_comparison_graph(data, data_type, start_date, end_date, collec
     female_trace = go.Bar(x=x, y=female_y, name='여자')
 
     data = [male_trace, female_trace]
-    layout = go.Layout(title=title, xaxis_title='조회 기간', yaxis_title='건수', width=800, height=500)
+    layout = go.Layout(title=title, xaxis_title='조회 기간', yaxis_title='건수')
     fig = go.Figure(data=data, layout=layout)
 
     return fig.to_html(full_html=False)
 
 ###시도 별 건수 그래프 생성###
-def create_district_graph(data, collection):
+def create_district_graph(data, collection,start_date,end_date):
     
     district_counts = {}
 
-    pipeline = regionQuery()
+    pipeline = regionQuery(start_date,end_date)
 
     result = collection.aggregate(pipeline)
 
@@ -218,7 +218,7 @@ def graph():
     gender_graph = create_gender_comparison_graph(data, data_type, start_date, end_date, collection)
 
     # 시도 별 건수 그래프 생성
-    district_graph = create_district_graph(data, collection)
+    district_graph = create_district_graph(data, collection,start_date,end_date)
 
     return render_template('DateGraph.html', gender_graph=gender_graph, district_graph=district_graph, title=graph_title)
 

@@ -1,11 +1,11 @@
 import pymongo
 from urllib import parse
 
-host = "localhost"
-port = "27017"
-user = "user2"
-pwd = "admin"
-db = "bigdata_ch1"
+host="localhost"
+port="27017"
+user="user1"
+pwd="user1"
+db="TeamProject"
 
 client = pymongo.MongoClient("mongodb://{}:".format(user)
                                 + parse.quote(pwd)
@@ -105,7 +105,7 @@ def return_query(case, region, keyword):
         
 
 def region_search_max_year(region, case):
-    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection_name = "Birth" if case in [1, 2, 3] else "Death"
     collection = db_conn.get_collection(collection_name)  
 
     pipeline = [
@@ -135,7 +135,7 @@ def region_search_max_year(region, case):
     return max_year
 
 def region_sort_max_year(region, case):
-    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection_name = "Birth" if case in [1, 2, 3] else "Death"
     collection = db_conn.get_collection(collection_name)  #컬렉션이름
 
     max_year = region_search_max_year(region, case)       #최고년도 가져오기
@@ -214,8 +214,13 @@ def GenderComparision(start_date,end_date):
     
     return pipeline
 
-def regionQuery():
-    pipeline=[
+def regionQuery(start_date,end_date):
+    pipeline = [
+        {
+            '$match': {
+                '조회기간': {'$gte': start_date, '$lte': end_date}
+            }
+        },
         {
             '$group': {
                 '_id': '$시도',
@@ -230,6 +235,7 @@ def regionQuery():
             }
         }
     ]
+
     
     return pipeline
 
@@ -303,7 +309,7 @@ def MainPageQuery():
     return pipeline
 
 def sort_droprate():    #하락률 정렬쿼리
-    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+    collection = db_conn.get_collection("Birth")  #컬렉션이름
 
     pipeline_2008 = [
         {
@@ -383,7 +389,7 @@ def sort_droprate():    #하락률 정렬쿼리
 #망한코드들
 #지역 상세검색 건수 순 정렬
 def sort_list(region, keyword):
-    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+    collection = db_conn.get_collection("Birth")  #컬렉션이름
 
     pipeline=[
             {

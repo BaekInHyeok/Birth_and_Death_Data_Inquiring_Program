@@ -48,7 +48,7 @@
         border-bottom: 1px solid black;
       }
 
-      #dec_title{
+      #dec_title {
         margin-bottom: 0;
         line-height: 1;
       }
@@ -78,7 +78,7 @@
         {{chart2|safe}}
       </div>
 
-      <hr>
+      <hr />
       <h2>남녀 출생 비율</h2>
       <div id="chart"></div>
       <script>
@@ -96,15 +96,16 @@
             yaxis: {
                 title: '차이 비율'
             }
+
         };
 
         var chartData = [data];
         Plotly.newPlot('chart', chartData, layout);
       </script>
-      <hr>
+      <hr />
       <div>
-        <h3 id = "dec_title">지역별 출생률 하락 그래프</h3>
-          {{chart3|safe}}
+        <h3 id="dec_title">지역별 출생률 하락 그래프</h3>
+        {{chart3|safe}}
       </div>
     </div>
   </body>

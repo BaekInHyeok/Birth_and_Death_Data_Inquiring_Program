@@ -40,11 +40,11 @@
       h1 {
         font-size: 50px;
       }
-      
+
       h2 {
         font-size: 30px;
       }
-      
+
       h3 {
         font-size: 20px;
       }
@@ -64,6 +64,13 @@
       select {
         font-size: 25px;
       }
+      #title {
+        text-align: center;
+      }
+
+      form {
+        text-align: center;
+      }
     </style>
   </head>
 
@@ -78,9 +85,8 @@
 
     <!--본문-->
     <div class="main">
-      <h1>구간 별 통계 조회</h1>
+      <h1 id="title">날짜구간 선택 조회</h1>
       <form action="/graph" method="POST">
-        <label for="data_type">데이터 유형:</label><br />
         <input type="radio" id="birth" name="data_type" value="birth" checked />
         <label for="birth">출생 데이터</label>
         <input type="radio" id="death" name="data_type" value="death" />

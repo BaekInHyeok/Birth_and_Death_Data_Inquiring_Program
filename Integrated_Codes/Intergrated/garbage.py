@@ -3,11 +3,11 @@
 import pymongo
 from urllib import parse
 
-host = "localhost"
-port = "27017"
-user = "user2"
-pwd = "admin"
-db = "bigdata_ch1"
+host="localhost"
+port="27017"
+user="user1"
+pwd="user1"
+db="TeamProject"
 
 client = pymongo.MongoClient("mongodb://{}:".format(user)
                                 + parse.quote(pwd)
@@ -16,7 +16,7 @@ client = pymongo.MongoClient("mongodb://{}:".format(user)
 db_conn = client.get_database(db)
 
 def region_search_max_year2(region, keyword, case):
-    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection_name = "Birth" if case in [1, 2, 3] else "Death"
     collection = db_conn.get_collection(collection_name)  #컬렉션이름
 
     pipeline = [
@@ -47,7 +47,7 @@ def region_search_max_year2(region, keyword, case):
     return max_year
 
 def region_sort_max_year2(region, keyword, case):
-    collection_name = "birth_data" if case in [1, 2, 3] else "Death"
+    collection_name = "Birth" if case in [1, 2, 3] else "Death"
     collection = db_conn.get_collection(collection_name)  #컬렉션이름
 
     max_year = region_search_max_year2(region, keyword, case)       #최고년도 가져오기
@@ -94,7 +94,7 @@ def region_sort_max_year2(region, keyword, case):
 
 #하락순 정렬 쿼리
 def sort_birth_list(region, keyword):
-    collection = db_conn.get_collection("birth_data")  #컬렉션이름
+    collection = db_conn.get_collection("Birth")  #컬렉션이름
     if keyword is not None:
         pipeline=[
                 {
